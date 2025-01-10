@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"go-tasks-app-practice/internal/handlers"
@@ -19,10 +18,10 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		fmt.Println("here is your token", tokenStr)
+		//fmt.Println("here is your token", tokenStr)
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return handlers.JWTSecret, nil
+			return []byte(handlers.JWTSecret), nil
 		})
 
 		if err != nil || !token.Valid {

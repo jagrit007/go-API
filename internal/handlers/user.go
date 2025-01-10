@@ -3,13 +3,17 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go-tasks-app-practice/internal/config"
 	"go-tasks-app-practice/internal/models"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
+	"os"
 	"time"
 )
 
-var JWTSecret = []byte("somerandomlongasssecret")
+// var JWTSecret = []byte("secret")
+
+var JWTSecret = os.Getenv("JWT_SECRET")
 
 type RegisterInput struct {
 	Email    string `json:"email" binding:"required,email"`
@@ -28,7 +32,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	user, err := models.FindUserByEmail(input.Email)
+	user, err := models.FindUserByEmail(config.DB, input.Email)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials" + err.Error()})
 		return
@@ -45,7 +49,7 @@ func Login(c *gin.Context) {
 		"exp":     time.Now().Add(time.Hour * 6).Unix(), // expires in a generous 6 hours
 	})
 
-	tokenString, err := token.SignedString(JWTSecret)
+	tokenString, err := token.SignedString([]byte(JWTSecret))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something went wrong, try again"})
 		return
@@ -62,7 +66,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	if _, err := models.FindUserByEmail(input.Email); err == nil {
+	if _, err := models.FindUserByEmail(config.DB, input.Email); err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email is already registered"})
 		return
 	}
@@ -78,8 +82,17 @@ func Register(c *gin.Context) {
 	//	"password": string(hashedPassword),
 	//}
 
-	user := models.User{Email: input.Email, Password: string(hashedPassword)}
-	models.AddUser(user)
+	user := models.User{
+		Email:    input.Email,
+		Password: string(hashedPassword),
+	}
+
+	if err := user.Create(config.DB); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register"})
+		return
+	}
+
+	//models.AddUser(user)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"user":    user,

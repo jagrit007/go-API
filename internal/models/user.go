@@ -1,28 +1,27 @@
 package models
 
 import (
-	"errors"
-	"fmt"
+	"gorm.io/gorm"
 )
 
 type User struct {
-	ID       uint   `json:"id"`
-	Email    string `json:"email"`
+	ID       uint   `json:"id" gorm:"primaryKey"`
+	Email    string `json:"email" gorm:"unique"`
 	Password string `json:"-"`
 }
 
-var users = []User{}
-
-func AddUser(user User) {
-	users = append(users, user)
+func (user *User) Create(db *gorm.DB) error {
+	return db.Create(&user).Error
 }
 
-func FindUserByEmail(email string) (*User, error) {
-	for _, user := range users {
-		fmt.Printf(email, user.Email)
-		if user.Email == email {
-			return &user, nil
-		}
-	}
-	return nil, errors.New("user not found")
+//var users = []User{}
+//
+//func AddUser(user User) {
+//	users = append(users, user)
+//}
+
+func FindUserByEmail(db *gorm.DB, email string) (*User, error) {
+	var user User
+	err := db.Where("email = ?", email).First(&user).Error
+	return &user, err
 }

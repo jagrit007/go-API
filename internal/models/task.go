@@ -1,12 +1,11 @@
 package models
 
 import (
-	"errors"
-	"strconv"
+	"gorm.io/gorm"
 )
 
 type Task struct {
-	ID          uint   `json:"id"`
+	ID          uint   `json:"id" gorm:"primaryKey"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	DueDate     string `json:"due_date"`
@@ -14,51 +13,39 @@ type Task struct {
 	UserID      uint   `json:"user_id"`
 }
 
+func (task *Task) Create(db *gorm.DB) error {
+	return db.Create(&task).Error
+}
+
 // mock Task DB
-var tasks = []Task{}
-var taskCounter uint = 1
+//var tasks = []Task{}
+//var taskCounter uint = 1
+//
+//func AddTask(task Task) {
+//	task.ID = taskCounter
+//	taskCounter++
+//	tasks = append(tasks, task)
+//}
 
-func AddTask(task Task) {
-	task.ID = taskCounter
-	taskCounter++
-	tasks = append(tasks, task)
-}
-
-func FindTaskByUserID(userID uint) []Task {
+func FindTaskByUserID(db *gorm.DB, userID uint) ([]Task, error) {
 	var userTasks []Task
-	for _, task := range tasks {
-		if task.UserID == userID {
-			userTasks = append(userTasks, task)
-		}
-	}
-	return userTasks
+	err := db.Where("user_id = ?", userID).Find(&userTasks).Error
+	return userTasks, err
 }
 
-func FindTaskByID(taskID uint, userID uint) (*Task, error) {
-	for _, task := range tasks {
-		if task.ID == taskID && task.UserID == userID {
-			return &task, nil
-		}
+func FindTaskByID(db *gorm.DB, taskID uint, userID uint) (*Task, error) {
+	var task Task
+	err := db.Where("id = ? AND user_id = ?", taskID, userID).First(&task).Error
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("Task with ID:" + strconv.Itoa(int(taskID)) + " not found")
+	return &task, nil
 }
 
-func UpdateTask(updatedTask Task, userID uint) error {
-	for i, task := range tasks {
-		if task.ID == updatedTask.ID && task.UserID == userID {
-			tasks[i] = updatedTask
-			return nil
-		}
-	}
-	return errors.New("task not found or not authorized")
+func (task *Task) Update(db *gorm.DB) error {
+	return db.Save(&task).Error
 }
 
-func DeleteTask(taskID uint, userID uint) error {
-	for i, task := range tasks {
-		if task.ID == taskID && task.UserID == userID {
-			tasks = append(tasks[:i], tasks[i+1:]...)
-			return nil
-		}
-	}
-	return errors.New("task not found or not authorized")
+func (task *Task) Delete(db *gorm.DB) error {
+	return db.Delete(&task).Error
 }

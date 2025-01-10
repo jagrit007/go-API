@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
+	"go-tasks-app-practice/internal/config"
 	"go-tasks-app-practice/internal/models"
 	"net/http"
 	"strconv"
@@ -16,7 +17,7 @@ type CreateTaskInput struct {
 type UpdateTaskInput struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	DueDate     string `json:"due-date"`
+	DueDate     string `json:"due_date"`
 	Completed   bool   `json:"completed"`
 }
 
@@ -37,14 +38,33 @@ func CreateTask(c *gin.Context) {
 		UserID:      userID,
 	}
 
-	models.AddTask(task)
+	err := task.Create(config.DB)
+	if err != nil {
+		return
+	}
+
+	//models.AddTask(task)
 	c.JSON(http.StatusCreated, gin.H{"message": "task created successfully", "task": task})
 
 }
 
+func GetTaskByID(c *gin.Context) {
+	userID := c.MustGet("user_id").(uint)
+	taskIDStr := c.Param("id")
+	taskID, _ := strconv.ParseUint(taskIDStr, 10, 32)
+
+	task, _ := models.FindTaskByID(config.DB, uint(taskID), userID)
+
+	c.JSON(http.StatusOK, gin.H{"message": "task retrieved successfully", "task": task})
+}
+
 func GetTasks(c *gin.Context) {
 	userID := c.MustGet("user_id").(uint)
-	tasks := models.FindTaskByUserID(userID)
+	tasks, err := models.FindTaskByUserID(config.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "tasks retrieved successfully", "tasks": tasks})
 }
@@ -64,7 +84,7 @@ func UpdateTask(c *gin.Context) {
 	}
 	userID := c.MustGet("user_id").(uint)
 
-	task, err := models.FindTaskByID(uint(taskID), userID)
+	task, err := models.FindTaskByID(config.DB, uint(taskID), userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -75,7 +95,7 @@ func UpdateTask(c *gin.Context) {
 	task.DueDate = input.DueDate
 	task.Completed = input.Completed
 
-	if err := models.UpdateTask(*task, userID); err != nil {
+	if err := task.Update(config.DB); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update the task"})
 		return
 	}
@@ -93,8 +113,14 @@ func DeleteTask(c *gin.Context) {
 	}
 	userID := c.MustGet("user_id").(uint)
 
-	if err := models.DeleteTask(uint(taskID), userID); err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	task, err := models.FindTaskByID(config.DB, uint(taskID), userID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Task not found"})
+		return
+	}
+
+	if err := task.Delete(config.DB); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 

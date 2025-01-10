@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"go-tasks-app-practice/internal/config"
 	"go-tasks-app-practice/internal/handlers"
 	"go-tasks-app-practice/internal/middleware"
 	"log"
@@ -9,6 +10,16 @@ import (
 
 func main() {
 	router := gin.Default()
+
+	db, err := config.InitDB()
+	if err != nil {
+		log.Fatal("Error connecting to the Database")
+	}
+	defer func() {
+		db, _ := db.DB()
+		_ = db.Close()
+	}()
+
 	router.GET("/", func(c *gin.Context) {
 		c.JSONP(200, gin.H{
 			"message": "Hello World",
@@ -26,6 +37,7 @@ func main() {
 
 		protectedTaskRoutes.POST("/", handlers.CreateTask)
 		protectedTaskRoutes.GET("/", handlers.GetTasks)
+		protectedTaskRoutes.GET("/:id", handlers.GetTaskByID)
 		protectedTaskRoutes.PUT("/:id", handlers.UpdateTask)
 		protectedTaskRoutes.DELETE("/:id", handlers.DeleteTask)
 
