@@ -60,7 +60,20 @@ func GetTaskByID(c *gin.Context) {
 
 func GetTasks(c *gin.Context) {
 	userID := c.MustGet("user_id").(uint)
-	tasks, err := models.FindTaskByUserID(config.DB, userID)
+
+	// get page from query params
+
+	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "5"))
+	if err != nil || limit < 1 {
+		limit = 5
+	}
+
+	tasks, err := models.FindTaskByUserID(config.DB, userID, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
 		return

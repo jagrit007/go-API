@@ -27,9 +27,17 @@ func (task *Task) Create(db *gorm.DB) error {
 //	tasks = append(tasks, task)
 //}
 
-func FindTaskByUserID(db *gorm.DB, userID uint) ([]Task, error) {
+func FindTaskByUserID(db *gorm.DB, userID uint, page, limit int) ([]Task, error) {
 	var userTasks []Task
-	err := db.Where("user_id = ?", userID).Find(&userTasks).Error
+	offset := (page - 1) * limit
+	query := db.Where("user_id = ?", userID)
+
+	err := query.Offset(offset).Limit(limit).Find(&userTasks).Error
+
+	if err != nil {
+		return nil, err
+	}
+
 	return userTasks, err
 }
 
